@@ -1,0 +1,301 @@
+#!/usr/bin/python3
+# vim:et:sta:sts=4:sw=4:ts=8:tw=79:
+
+import subprocess
+import shutil
+import os
+import sys
+import platform
+import re
+
+slaptget = '/usr/sbin/slapt-get'
+slaptsrc = '/usr/bin/slapt-src'
+
+def get_arch():
+    '''
+    Determine the CPU architecture. Should be:
+    - 'arm' for any arm* system
+    - 'i486' for 32bit systems
+    - 'x86_64' for 64bit systems
+    '''
+    m = platform.machine()
+    if re.match('i.86$', m):
+        return 'i486'
+    elif re.match('arm', m):
+        return 'arm'
+    else:
+        return m
+
+arch = get_arch()
+
+builddir = '/usr/src/slapt-src'
+storagedir_src = '/home/george/salix/sbo/repo/%s/source' % arch
+storagedir_pkg = '/home/george/salix/sbo/repo/%s/pkg' % arch
+logdir = '/home/george/salix/sbo/repo/%s/log' % arch
+
+metagen = '%s/metagen' % storagedir_pkg
+
+# create a copy of the default environment
+initial_env = dict()
+
+def strip_pkg_name(full_name):
+    '''
+    Strips the pkg name from the full package name
+    '''
+    return full_name.rpartition('-')[0].rpartition('-')[0].rpartition('-')[0]
+
+def pkg_installed():
+    '''
+    Returns a list of installed packages
+    '''
+    l = []
+    for i in os.listdir('/var/log/packages'):
+        l.append(strip_pkg_name(i))
+    return l
+
+def pkg_available():
+    '''
+    Returns a list of available packages. It does not include installed
+    packages
+    '''
+    l = []
+    p = subprocess.Popen([slaptget, '--available'], stdout=subprocess.PIPE)
+    output = p.communicate()[0].splitlines()
+    retval = p.returncode
+    if retval == 0:
+        for line in output:
+            pkg = strip_pkg_name(line.decode('utf-8').partition(' [inst=')[0])
+            l.append(pkg)
+    return l
+
+def sb_available():
+    '''
+    Returns a list of available slackbuilds
+    '''
+    l = []
+    p = subprocess.Popen([slaptsrc, '--list'], stdout=subprocess.PIPE)
+    output = p.communicate()[0].splitlines()
+    retval = p.returncode
+    if retval == 0:
+        for line in output:
+            pkg = line.decode('utf-8').partition(':')[0]
+            l.append(pkg)
+    return l
+
+def get_slackbuild_category(slackbuild):
+    cat = None
+    env = dict()
+    for i in initial_env:
+        env[i] = initial_env[i]
+    env['LANG'] = 'C'
+    p = subprocess.Popen([slaptsrc, '--show', slackbuild],
+            stdout=subprocess.PIPE, env=env)
+    output = p.communicate()[0].splitlines()
+    retval = p.returncode
+    if retval == 0:
+        for line in output:
+            l = line.decode('utf-8')
+            if l.startswith('SlackBuild Category:'):
+                cat = l.partition('SlackBuild Category: ')[2].partition('/')[0]
+    return cat
+
+def fetch(slackbuild):
+    '''
+    Fetches the source files for slackbuild, without dependencies. On
+    successful download, it puts them inside storagedir_src.
+    Before doing anything else, it makes sure the slapt-src cache is clean; we
+    don't wan't any leftover files in there.
+    '''
+    print('Fetching sources...')
+    category = get_slackbuild_category(slackbuild)
+    # clean the cache
+    subprocess.call([slaptsrc, '--clean'])
+    # get the source
+    p = subprocess.call([slaptsrc, '-y', '--no-dep', '-f', slackbuild],
+            stdout=open(os.devnull, 'wb'))
+    if p == 0:
+        print('Done fetching sources.')
+        src = "%s/%s/%s" % (builddir, category, slackbuild)
+        dest = "%s/%s/%s" % (storagedir_src, category, slackbuild)
+        if os.path.isdir(dest):
+            shutil.rmtree(dest)
+        try:
+            shutil.copytree(src, dest)
+        except:
+            p = 127
+            print('ERROR: Could not copy sources to %s.' % dest)
+    else:
+        print('ERROR: Could not fetch sources')
+    return p
+
+def removepkg(pkg):
+    '''
+    Removes an installed package.
+    '''
+    print('Uninstalling %s package...' % pkg)
+    p = subprocess.call(['spkg', '-d', pkg], stdout=open(os.devnull, 'wb'))
+    if p != 0:
+        print('ERROR: could not uninstall package.')
+
+def build(slackbuild):
+    '''
+    Builds and installs the slackbuild, without dependencies. On successful
+    building/installing, it:
+    1. copies the created package in the local package repo
+    2. runs depfinder to create a dep file for it
+    3. updates the repo PACKAGES.TXT by running metagen
+    4. runs: slapt-get -u
+    5. removes the installed package
+    '''
+    cwd = os.getcwd()
+    print('Building package...')
+    category = get_slackbuild_category(slackbuild)
+    logcat = '%s/%s' % (logdir, category)
+    if not os.path.isdir(logcat):
+        os.makedirs(logcat)
+    logfile = "%s/%s" % (logcat, slackbuild)
+    p = subprocess.call([slaptsrc, '-y', '--no-dep', '-i', slackbuild],
+            stdout=open(logfile, 'wb'), stderr=open(logfile, 'wb'))
+    if p == 0:
+        srcdir = "%s/%s/%s" % (builddir, category, slackbuild)
+        repodir = "%s/salix/%s" % (storagedir_pkg, category)
+        pkg = None
+        for i in os.listdir(srcdir):
+            if i.startswith(slackbuild) and i.endswith('salix.txz'):
+                pkg = '%s/%s' % (srcdir, i)
+        if not pkg:
+            print('ERROR: could not find created package')
+            return 101
+        if not os.path.isdir(repodir):
+            os.makedirs(repodir)
+        try:
+            print('Copying package to local repo...')
+            shutil.copy(pkg, repodir)
+        except:
+            print('ERROR: could not copy package to local repo.')
+            return 102
+        # chdir and create the dep file
+        os.chdir(repodir)
+        print('Calculating deps...')
+        pr = subprocess.call(['depfinder', '-f', pkg],
+                stdout=open(os.devnull, 'wb'))
+        if pr != 0:
+            print('ERROR: problem creating dep file.')
+        os.chdir(cwd)
+        # now run metagen to update the local repo
+        print('Updating local repo with metagen')
+        subprocess.call([metagen, 'md5'], stdout=open(os.devnull, 'wb'),
+                cwd=storagedir_pkg)
+        subprocess.call([metagen, 'new'], stdout=open(os.devnull, 'wb'),
+                cwd=storagedir_pkg)
+        print('Running slapt-get -u')
+        pr = subprocess.call([slaptget, '-u'], stdout=open(os.devnull, 'wb'))
+        if pr != 0:
+            print('ERROR: could not run slapt-get -u')
+    else:
+        print('ERROR: could not build package.')
+    return p
+
+def slaptgetdeps(pkgs):
+    deps = []
+    args = [slaptget, '--simulate', '--install']
+    for i in pkgs:
+        args.append(i)
+    env = dict()
+    for i in initial_env:
+        env[i] = initial_env[i]
+    env['LANG'] = 'C'
+    p = subprocess.Popen(args, stdout=subprocess.PIPE,
+            stderr=open(os.devnull, 'wb'), env=env)
+    output = p.communicate()[0]
+    data = ''
+    for line in output.splitlines():
+        l = line.decode('utf-8')
+        if l.endswith(' is to be installed'):
+            data = l.rpartition(' is to be installed')[0].rpartition('-')[0].rpartition('-')[0].rpartition('-')[0]
+            if data is not '':
+                if data not in deps:
+                    deps.append(data)
+    return deps
+
+def slaptsrcdeps(pkg):
+    '''
+    Returns the dependencies of a single slackbuild (pkg)
+    '''
+    deps = []
+    args = [slaptsrc, '--show', pkg]
+    env = dict()
+    for i in initial_env:
+        env[i] = initial_env[i]
+    env['LANG'] = 'C'
+    p = subprocess.Popen(args, stdout=subprocess.PIPE,
+            stderr=open(os.devnull, 'wb'), env=env)
+    output = p.communicate()[0]
+    data = ''
+    for line in output.splitlines():
+        l = line.decode('utf-8')
+        if l.startswith('SlackBuild Requires:'):
+            data = l.partition(':')[2]
+    newdeps = data.replace('\n', ',').strip(' ').split(',')
+    for i in newdeps:
+        if i is not '' and i != '%README%':
+            if i not in deps:
+                deps.append(i)
+    return deps
+
+def install_dep(dep, slackbuild):
+    if dep in pkg_installed():
+        p = 0
+    elif dep in pkg_available():
+        print('* Installing %s package as a dependency for %s' % (dep,
+            slackbuild))
+        p = subprocess.call([slaptget, '-i', dep],
+                stdout=open(os.devnull, 'wb'))
+    elif dep in sb_available():
+        print('* Installing %s SlackBuild as a dependency for %s' % (dep,
+            slackbuild))
+        p = process(dep)
+    else:
+        print('* Not sure what happened here. %s is nowhere to be found?' % slackbuild)
+
+    return p
+
+
+def process(slackbuild):
+    '''
+
+    '''
+    pkgs = pkg_installed() + pkg_available()
+    if slackbuild not in pkgs:
+        deps = slaptsrcdeps(slackbuild)
+        for i in deps:
+            install_dep(i, slackbuild)
+        print('+-------------------------------------------+')
+        print('Processing %s...' % slackbuild)
+        f = fetch(slackbuild)
+        if f == 0:
+            b = build(slackbuild)
+        else:
+            b = 1
+        #if not deps == []:
+        #    print('Removing dependencies...')
+        #    for i in deps:
+        #        if i in pkg_installed():
+        #            removepkg(i)
+        #if slackbuild in pkg_installed():
+        #    print('Removing installed package...')
+        #    pr = removepkg(slackbuild)
+        print('+-------------------------------------------+')
+        return b
+    else:
+        print('*** %s is already packaged. Skipping.' % slackbuild)
+        return 0
+
+if __name__ == "__main__":
+    try:
+        args = sys.argv[1:]
+        for i in args:
+            process(i)
+    except KeyboardInterrupt:
+        sys.exit(2)
+
