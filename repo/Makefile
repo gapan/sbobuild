@@ -35,3 +35,10 @@ clean-i486:
 clean-x86_64:
 	rm -rf x86_64
 	cp -r empty x86_64
+
+.PHONY: compare
+compare:
+	@find i486/pkg/salix -name "*.txz" | sed "s|.*salix/\(.*\)/\(.*\)-\(.*\)-\(.*\)-\(.*\)\.txz|\2|" | sort > PKG32
+	@find x86_64/pkg/salix -name "*.txz" | sed "s|.*salix/\(.*\)/\(.*\)-\(.*\)-\(.*\)-\(.*\)\.txz|\2|" | sort > PKG64
+	@diff -Naur PKG32 PKG64 | grep "^+\|^-" | less
+	@rm -f PKG32 PKG64
