@@ -7,6 +7,7 @@ import os
 import sys
 import platform
 import re
+from simpleconfig import SimpleConfig
 
 slaptget = '/usr/sbin/slapt-get'
 slaptsrc = '/usr/bin/slapt-src'
@@ -28,10 +29,11 @@ def get_arch():
 
 arch = get_arch()
 
-builddir = '/usr/src/slapt-src'
-storagedir_src = '/home/george/salix/sbo/repo/%s/source' % arch
-storagedir_pkg = '/home/george/salix/sbo/repo/%s/pkg' % arch
-logdir = '/home/george/salix/sbo/repo/%s/log' % arch
+c = SimpleConfig('sbobuild.conf')
+builddir = c.get('builddir')
+storagedir_src = c.get('storagedir_src') % arch
+storagedir_pkg = c.get('storagedir_pkg') % arch
+logdir = c.get('logdir') % arch
 
 metagen = '%s/metagen' % storagedir_pkg
 
