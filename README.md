@@ -50,17 +50,19 @@ stored. In this example that will be under
 * Notice the `metagen` script. You have to put it in there. Everything else
 are directories.
 
-* Edit the paths to `storagedir_src`, `storagedir_pkg`, `logdir` at the
-top of the *sbobuild* script accordingly. In this example it could be
+* Edit the paths to `storagedir_src`, `storagedir_pkg`, `logdir` in the
+*sbobuild.conf* file accordingly. In this example it could be
 something like:
 
 ```
-storagedir_src = '/home/george/salix/sbo/repo/%s/source' % arch
-storagedir_pkg = '/home/george/salix/sbo/repo/%s/pkg' % arch
-logdir = '/home/george/salix/sbo/repo/%s/log' % arch
+storagedir_src=/home/george/salix/sbo/repo/%s/source
+storagedir_pkg=/home/george/salix/sbo/repo/%s/pkg
+logdir=/home/george/salix/sbo/repo/%s/log
 ```
 
-which also accomodates for both i486 and x86_64 repositories.
+which also accomodates for both i486 and x86_64 repositories. Put "%s"
+where you want to replace with "i486" and "x86_64", respectively as in
+the above example.
 
 * Fire up sbobuild and provide it with a list of SlackBuilds to build:
 
