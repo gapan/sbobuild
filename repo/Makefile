@@ -42,3 +42,11 @@ compare:
 	@find x86_64/pkg/salix -name "*.txz" | sed "s|.*salix/\(.*\)/\(.*\)-\(.*\)-\(.*\)-\(.*\)\.txz|\2|" | sort > PKG64
 	@diff -Naur PKG32 PKG64 | grep "^+\|^-" | less
 	@rm -f PKG32 PKG64
+
+.PHONY: changelog32
+changelog32:
+	@find i486/pkg/salix -name "*.txz" ! -name "dummy-*" | sed "s|^\./||" | sed "s/txz$$/txz: Added./"
+
+.PHONY: changelog64
+changelog64:
+	@find x86_64/pkg/salix -name "*.txz" ! -name "dummy-*" | sed "s|^\./||" | sed "s/txz$$/txz: Added./"
