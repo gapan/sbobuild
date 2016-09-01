@@ -45,8 +45,8 @@ compare:
 
 .PHONY: changelog32
 changelog32:
-	@find i486/pkg/salix -name "*.txz" ! -name "dummy-*" | sed "s|^\.i486/pkg/salix/||" | sed "s/txz$$/txz: Added./"
+	@find i486/pkg/salix -name "*.txz" ! -name "dummy-*" | sed "s|^\.i486/pkg/salix/||" | sed "s/txz$$/txz: Added./" | sort
 
 .PHONY: changelog64
 changelog64:
-	@find x86_64/pkg/salix -name "*.txz" ! -name "dummy-*" | sed "s|^\.x86_64/pkg/salix||" | sed "s/txz$$/txz: Added./"
+	@find x86_64/pkg/salix -name "*.txz" ! -name "dummy-*" | sed "s|^\.x86_64/pkg/salix||" | sed "s/txz$$/txz: Added./" | sort
