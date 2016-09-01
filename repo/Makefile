@@ -49,4 +49,4 @@ changelog32:
 
 .PHONY: changelog64
 changelog64:
-	@find x86_64/pkg/salix -name "*.txz" ! -name "dummy-*" | sed "s|^x86_64/pkg/salix||" | sed "s/txz$$/txz: Added./" | sort
+	@find x86_64/pkg/salix -name "*.txz" ! -name "dummy-*" | sed "s|^x86_64/pkg/salix/||" | sed "s/txz$$/txz: Added./" | sort
