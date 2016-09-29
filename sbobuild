@@ -280,14 +280,6 @@ def process(slackbuild):
             b = build(slackbuild)
         else:
             b = 1
-        #if not deps == []:
-        #    print('Removing dependencies...')
-        #    for i in deps:
-        #        if i in pkg_installed():
-        #            removepkg(i)
-        #if slackbuild in pkg_installed():
-        #    print('Removing installed package...')
-        #    pr = removepkg(slackbuild)
         print('+-------------------------------------------+')
         return b
     else:
