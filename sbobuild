@@ -34,6 +34,7 @@ builddir = c.get('builddir')
 storagedir_src = c.get('storagedir_src') % arch
 storagedir_pkg = c.get('storagedir_pkg') % arch
 logdir = c.get('logdir') % arch
+pkgsuffix = c.get('pkgsuffix')
 
 metagen = '%s/metagen' % storagedir_pkg
 
@@ -163,7 +164,7 @@ def build(slackbuild):
         repodir = "%s/salix/%s" % (storagedir_pkg, category)
         pkg = None
         for i in os.listdir(srcdir):
-            if i.startswith(slackbuild) and i.endswith('salix.txz'):
+            if i.startswith(slackbuild) and i.endswith('%s.txz' % (pkgsuffix)):
                 pkg = '%s/%s' % (srcdir, i)
         if not pkg:
             print('ERROR: could not find created package')
