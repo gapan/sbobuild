@@ -140,7 +140,7 @@ def removepkg(pkg):
     if p != 0:
         print('ERROR: could not uninstall package.')
 
-def build(slackbuild):
+def build(slackbuild, sbodeps):
     '''
     Builds and installs the slackbuild, without dependencies. On successful
     building/installing, it:
@@ -184,6 +184,10 @@ def build(slackbuild):
                 stdout=open(os.devnull, 'wb'))
         if pr != 0:
             print('ERROR: problem creating dep file.')
+        else:
+            depfile = '%s/%s.%s' % \
+                (repodir, pkg.rpartition('.')[0].rpartition('/')[2], 'dep')
+            addsbodeps(depfile, sbodeps)
         os.chdir(cwd)
         # now run metagen to update the local repo
         print('Updating local repo with metagen')
@@ -198,6 +202,24 @@ def build(slackbuild):
     else:
         print('ERROR: could not build package.')
     return p
+
+def addsbodeps(depfile, sbodeps):
+    deps = []
+    newdeps = []
+    with open(depfile) as f:
+        data = f.readlines()
+        for line in data:
+            for d in line.replace('\n', ',').rstrip(',').split(','):
+                deps.append(d)
+    for i in sbodeps:
+        if i not in deps:
+            newdeps.append(i)
+    print('Adding new deps: %s' % (','.join(newdeps)))
+    for i in newdeps:
+        deps.append(i)
+    with open(depfile, 'w') as f:
+        f.write(','.join(deps))
+        f.write('\n')
 
 def slaptgetdeps(pkgs):
     deps = []
@@ -277,7 +299,7 @@ def process(slackbuild):
         print('Processing %s...' % slackbuild)
         f = fetch(slackbuild)
         if f == 0:
-            b = build(slackbuild)
+            b = build(slackbuild, deps)
         else:
             b = 1
         print('+-------------------------------------------+')
