@@ -286,12 +286,12 @@ def install_dep(dep, slackbuild):
     return p
 
 
-def process(slackbuild):
+def process(slackbuild, force_build):
     '''
 
     '''
     pkgs = pkg_installed() + pkg_available()
-    if slackbuild not in pkgs:
+    if slackbuild not in pkgs or force_build:
         deps = slaptsrcdeps(slackbuild)
         for i in deps:
             install_dep(i, slackbuild)
@@ -311,8 +311,14 @@ def process(slackbuild):
 if __name__ == "__main__":
     try:
         args = sys.argv[1:]
+        force_build = False
         for i in args:
-            process(i)
+            if i == "--force":
+                force_build = True
+                continue
+            else:
+                force_build = False
+            process(i, force_build)
     except KeyboardInterrupt:
         sys.exit(2)
 
