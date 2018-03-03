@@ -316,9 +316,8 @@ if __name__ == "__main__":
             if i == "--force":
                 force_build = True
                 continue
-            else:
-                force_build = False
             process(i, force_build)
+            force_build = False
     except KeyboardInterrupt:
         sys.exit(2)
 
