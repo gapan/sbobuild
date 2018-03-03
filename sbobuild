@@ -283,8 +283,6 @@ def install_dep(dep, slackbuild, force_build):
     else:
         print('* Not sure what happened here. %s is nowhere to be found?' % slackbuild)
 
-    return p
-
 
 def process(slackbuild, force_build):
     '''
