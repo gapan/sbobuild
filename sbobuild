@@ -268,7 +268,7 @@ def slaptsrcdeps(pkg):
                 deps.append(i)
     return deps
 
-def install_dep(dep, slackbuild):
+def install_dep(dep, slackbuild, force_build):
     if dep in pkg_installed():
         p = 0
     elif dep in pkg_available():
@@ -279,7 +279,7 @@ def install_dep(dep, slackbuild):
     elif dep in sb_available():
         print('* Installing %s SlackBuild as a dependency for %s' % (dep,
             slackbuild))
-        p = process(dep)
+        p = process(dep, force_build)
     else:
         print('* Not sure what happened here. %s is nowhere to be found?' % slackbuild)
 
@@ -294,7 +294,7 @@ def process(slackbuild, force_build):
     if slackbuild not in pkgs or force_build:
         deps = slaptsrcdeps(slackbuild)
         for i in deps:
-            install_dep(i, slackbuild)
+            install_dep(i, slackbuild, force_build)
         print('+-------------------------------------------+')
         print('Processing %s...' % slackbuild)
         f = fetch(slackbuild)
