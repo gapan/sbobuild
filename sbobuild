@@ -238,7 +238,7 @@ def slaptgetdeps(pkgs):
         l = line.decode('utf-8')
         if l.endswith(' is to be installed'):
             data = l.rpartition(' is to be installed')[0].rpartition('-')[0].rpartition('-')[0].rpartition('-')[0]
-            if data is not '':
+            if data != '':
                 if data not in deps:
                     deps.append(data)
     return deps
@@ -263,7 +263,7 @@ def slaptsrcdeps(pkg):
             data = l.partition(':')[2]
     newdeps = data.replace('\n', ',').strip(' ').split(',')
     for i in newdeps:
-        if i is not '' and i != '%README%':
+        if i != '' and i != '%README%':
             if i not in deps:
                 deps.append(i)
     return deps
