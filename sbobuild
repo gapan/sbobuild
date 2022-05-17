@@ -54,7 +54,7 @@ def pkg_installed():
     Returns a list of installed packages
     '''
     l = []
-    for i in os.listdir('/var/log/packages'):
+    for i in os.listdir('/var/lib/pkgtools/packages'):
         l.append(strip_pkg_name(i))
     return l
 
