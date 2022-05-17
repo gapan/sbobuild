@@ -1,4 +1,4 @@
-VERSION=14.2
+VERSION=15.0
 
 SSH_HOST=salixos.org
 SSH_PORT=22
