@@ -36,6 +36,8 @@ storagedir_pkg = c.get('storagedir_pkg') % arch
 logdir = c.get('logdir') % arch
 pkgsuffix = c.get('pkgsuffix')
 
+os.environ["TAG"] = pkgsuffix
+
 metagen = '%s/metagen' % storagedir_pkg
 
 # create a copy of the default environment
